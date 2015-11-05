@@ -9,17 +9,31 @@ import org.elasticsearch.node.NodeBuilder.nodeBuilder
 import org.scalastuff.esclient.ESClient
 
 object ElasticsearchTest extends App {
-  val client : Client = nodeBuilder.node.client
+  val node = nodeBuilder.node()
+  val client = node.client()
+    val json = "{" +
+      "\"user\":\"kimchy4a\"," +
+      "\"postDate\":\"2013-01-30\"," +
+      "\"message\":\"trying out Elasticsearch\"" +
+      "}";
 
-  val json = "{" +
-    "\"user\":\"kimchy\"," +
+  val json2 = "{" +
+    "\"user\":\"kimchy3a\"," +
     "\"postDate\":\"2013-01-30\"," +
     "\"message\":\"trying out Elasticsearch\"" +
     "}";
 
-  val ir = new IndexRequest("twitter", "tweet").source(json)
+    val ir = new IndexRequest("twitter", "tweet", "12asl4").source(json)
 
-  val response : Future[IndexResponse] =
-    client.execute(ir)
-  println("Document id: " + Await.result(response, 5 seconds).getId)
+    val response : Future[IndexResponse] =
+      client.execute(ir)
+    println("Document id: " + Await.result(response, 5 seconds).getId)
+
+  val ir2 = new IndexRequest("twitter", "tweet", "22sdfs4").source(json2)
+
+  val response2 : Future[IndexResponse] =
+    client.execute(ir2)
+  println("Document id: " + Await.result(response2, 5 seconds).getId)
+
+  node.close()
 }
