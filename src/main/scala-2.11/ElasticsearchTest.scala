@@ -17,27 +17,24 @@ object ElasticsearchTest extends App {
   val files = new java.io.File(inputPath).listFiles
   val filesSel = files.filter(_.getName.endsWith(".json"))
 
-  println(s"##3# here.")
-  val client : Client = nodeBuilder.node.client
-  println(s"##4# here.")
+  val node = nodeBuilder.node()
+  val client = node.client()
 
   for (inputFileName <- filesSel) {
     println(s"Importing $inputFileName into Elasticsearch...")
     val sInput = Source.fromFile(inputFileName)
-    val iLines = sInput.getLines().toString
+    val iLines = sInput.getLines()
+
+    for (l <- iLines) {
+      val ir = new IndexRequest("github", "eventlog").source(l)
+
+      val response : Future[IndexResponse] = client.execute(ir)
+      Await.result(response, 5 seconds).getId
+    }
+
     sInput.close()
-
-    println(s"##1# $iLines###")
-
-//    val ir = new IndexRequest("github", "eventlog").source(iLines)
-
-    println(s"##2# reached.")
-
-    /*
-    val response : Future[IndexResponse] =
-      client.execute(ir)
-    println("Document id: " + Await.result(response, 5 seconds).getId)
-    */
   }
+
+  node.close()
 
 }
