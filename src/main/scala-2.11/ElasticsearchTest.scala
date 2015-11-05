@@ -23,14 +23,12 @@ object ElasticsearchTest extends App {
   for (inputFileName <- filesSel) {
     println(s"Importing $inputFileName into Elasticsearch...")
     val sInput = Source.fromFile(inputFileName)
-    val iLines = sInput.getLines()
+    val iLines = sInput.getLines().toString
 
-    for (l <- iLines) {
-      val ir = new IndexRequest("github", "eventlog").source(l)
+    val ir = new IndexRequest("github", "eventlog").source(iLines)
 
-      val response : Future[IndexResponse] = client.execute(ir)
-      Await.result(response, 5 seconds).getId
-    }
+    val response : Future[IndexResponse] = client.execute(ir)
+    Await.result(response, 5 seconds).getId
 
     sInput.close()
   }
