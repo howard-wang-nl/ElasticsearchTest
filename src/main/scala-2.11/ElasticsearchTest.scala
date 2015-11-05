@@ -8,18 +8,36 @@ import org.elasticsearch.client.Client
 import org.elasticsearch.node.NodeBuilder.nodeBuilder
 import org.scalastuff.esclient.ESClient
 
+import scala.io.Source
+
 object ElasticsearchTest extends App {
+
+  val inputPath = "/Users/hwang/IdeaProjects/githubstat/data/"
+
+  val files = new java.io.File(inputPath).listFiles
+  val filesSel = files.filter(_.getName.endsWith(".json"))
+
+  println(s"##3# here.")
   val client : Client = nodeBuilder.node.client
+  println(s"##4# here.")
 
-  val json = "{" +
-    "\"user\":\"kimchy\"," +
-    "\"postDate\":\"2013-01-30\"," +
-    "\"message\":\"trying out Elasticsearch\"" +
-    "}";
+  for (inputFileName <- filesSel) {
+    println(s"Importing $inputFileName into Elasticsearch...")
+    val sInput = Source.fromFile(inputFileName)
+    val iLines = sInput.getLines().toString
+    sInput.close()
 
-  val ir = new IndexRequest("twitter", "tweet").source(json)
+    println(s"##1# $iLines###")
 
-  val response : Future[IndexResponse] =
-    client.execute(ir)
-  println("Document id: " + Await.result(response, 5 seconds).getId)
+//    val ir = new IndexRequest("github", "eventlog").source(iLines)
+
+    println(s"##2# reached.")
+
+    /*
+    val response : Future[IndexResponse] =
+      client.execute(ir)
+    println("Document id: " + Await.result(response, 5 seconds).getId)
+    */
+  }
+
 }
