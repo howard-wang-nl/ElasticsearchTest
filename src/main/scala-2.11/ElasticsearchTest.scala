@@ -1,5 +1,8 @@
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
 import org.elasticsearch.action.count.CountResponse
+import org.elasticsearch.index.engine.Engine.Get
 import org.elasticsearch.index.query.QueryBuilders
+import org.elasticsearch.monitor.network.NetworkInfo.Interface
 
 import scala.concurrent.Await
 import scala.concurrent.Future
@@ -9,45 +12,57 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.index.IndexResponse
 import org.elasticsearch.client.Client
 import org.elasticsearch.node.NodeBuilder.nodeBuilder
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.index.query.QueryBuilders._;
-import org.elasticsearch.index.query.FilterBuilders._;
-import org.scalastuff.esclient.ESClient
-import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.action.search.SearchType
+import org.elasticsearch.index.query.QueryBuilders._
+import org.elasticsearch.index.query.FilterBuilders._
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
+import org.elasticsearch.client.IndicesAdminClient
+import org.elasticsearch.search.aggregations.AggregationBuilders
 
 import scala.io.Source
 
 object ElasticsearchTest extends App {
 
   val inputPath = "/Users/hwang/IdeaProjects/githubstat/data/01/"
+  val indexName = "github"
+  val indexType = "eventlog"
 
   val files = new java.io.File(inputPath).listFiles
   val filesSel = files.filter(_.getName.endsWith(".json"))
 
   val node = nodeBuilder.node()
   val client = node.client()
+  val iac = client.admin().indices()
+  val gir = iac.prepareGetIndex().execute().actionGet()
+  println("### GetIndexResponse Array size: " + gir.getIndices.size)
+  gir.getIndices.foreach(x => println(x)) // FIXME: Why sometimes get empty results even if consecutive exists check returns correct result?
+
+  if (iac.exists(new IndicesExistsRequest(indexName)).actionGet().isExists) {
+    println("### Delete old github data...")
+    iac.delete(new DeleteIndexRequest(indexName)).actionGet()
+  } else {
+    println("### Old github data not found?") // FIXME: Why sometimes exists check return false when there is in fact index data there?
+  }
 
   for (inputFileName <- filesSel) {
-    println(s"Importing $inputFileName into Elasticsearch...")
+    println(s"### Importing $inputFileName into Elasticsearch...")
     val sInput = Source.fromFile(inputFileName)
     val iLines = sInput.getLines()
 
     for (l <- iLines) {
-      val ir = new IndexRequest("github", "eventlog").source(l)
-
-      val response : Future[IndexResponse] = client.execute(ir)
-      Await.result(response, 5 seconds).getId
+      val ir = new IndexRequest(indexName, indexType).source(l)
+      val response : IndexResponse = client.index(ir).actionGet()
     }
 
     sInput.close()
   }
 
-  Thread.sleep(2000); // wait for the server to finish indexing.
+  iac.prepareRefresh("github").execute().actionGet()
 
 //  val q = termQuery("type", "PushEvent")
   val q = matchAllQuery()
-  println("Query=" + q.toString)
+  println("### Query=" + q.toString)
 
   val a = AggregationBuilders.terms("eventTypes").field("type")
 
@@ -59,9 +74,10 @@ object ElasticsearchTest extends App {
     .execute()
     .actionGet()
 
-  println("Response: " + response.toString)
-  println("RequestStatus: " + response.status.name)
+  println("### Response: " + response.toString)
+  println("### RequestStatus: " + response.status.name)
 
+  client.close()
   node.close()
 
 }
