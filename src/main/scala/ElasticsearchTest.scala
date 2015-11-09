@@ -1,28 +1,14 @@
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
-import org.elasticsearch.action.count.CountResponse
-import org.elasticsearch.index.engine.Engine.Get
-import org.elasticsearch.index.query.QueryBuilders
-import org.elasticsearch.monitor.network.NetworkInfo.Interface
-
-import scala.concurrent.Await
-import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
-
-import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.client.Client
-import org.elasticsearch.node.NodeBuilder.nodeBuilder
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.action.search.SearchType
-import org.elasticsearch.index.query.QueryBuilders._
-import org.elasticsearch.index.query.FilterBuilders._
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
-import org.elasticsearch.client.IndicesAdminClient
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest
+import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
+import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.index.query.QueryBuilders._
+import org.elasticsearch.node.NodeBuilder.nodeBuilder
 import org.elasticsearch.search.aggregations.AggregationBuilders
 
 import scala.io.Source
 
-object ElasticsearchTest extends App {
+object ElasticsearchTest {
 
   val inputPath = "/Users/hwang/IdeaProjects/githubstat/data/01/"
   val indexName = "github"
