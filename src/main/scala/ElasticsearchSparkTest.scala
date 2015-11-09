@@ -32,7 +32,8 @@ object ElasticsearchSparkTest extends App {
       sInput.close()
     }
 
-    val rdd = sc.esRDD(esRes)
+    val q = "?q=type:PushEvent"
+    val rdd = sc.esRDD(esRes, q)
 
     println("### Results:")
     rdd.saveAsTextFile(outFile)
