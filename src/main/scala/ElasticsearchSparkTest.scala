@@ -4,8 +4,8 @@ import org.elasticsearch.spark._
 
 import scala.io.Source
 
-object ElasticsearchSparkTest extends App {
-  override def main(array: Array[String]): Unit = {
+object ElasticsearchSparkTest {
+  def main(array: Array[String]): Unit = {
     val inputPath = "/Users/hwang/IdeaProjects/githubstat/data/01/"
     val outFile = "/tmp/esRDD"
     val indexName = "github"
@@ -32,7 +32,7 @@ object ElasticsearchSparkTest extends App {
       sInput.close()
     }
 
-//    val q = "?q=type:PushEvent"
+    val q = "?q=type:PushEvent"
 
     /* This query doesn't work with elasticsearch-spark because the connector is implemented through
      * scan/scroll which doesn't support aggregation yet.
@@ -54,7 +54,6 @@ object ElasticsearchSparkTest extends App {
 
     /* Try facet.
      * no exception, but result esRDD doesn't include facets results but only the original data.
-     */
     val q =
       """
         |{
@@ -63,6 +62,7 @@ object ElasticsearchSparkTest extends App {
         |  }
         |}
       """.stripMargin
+     */
 
     val rdd = sc.esRDD(esRes, q)
     rdd.collect().foreach(println)
