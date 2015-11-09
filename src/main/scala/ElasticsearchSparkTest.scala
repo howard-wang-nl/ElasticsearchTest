@@ -32,10 +32,42 @@ object ElasticsearchSparkTest extends App {
       sInput.close()
     }
 
-    val q = "?q=type:PushEvent"
-    val rdd = sc.esRDD(esRes, q)
+//    val q = "?q=type:PushEvent"
 
-    println("### Results:")
+    /* This query doesn't work with elasticsearch-spark because the connector is implemented through
+     * scan/scroll which doesn't support aggregation yet.
+     * See: How to get aggregations working in Elasticsearch Spark adapter?
+     * https://groups.google.com/forum/#!topic/elasticsearch/9ZrJ4zyqgWU
+     * https://github.com/elastic/elasticsearch-hadoop/issues/276
+     *
+    val q =
+      """
+        |{
+        |  "aggs" : {
+        |    "event_types" : {
+        |      "terms" : { "field" : "type" }
+        |    }
+        |  }
+        |}
+      """.stripMargin
+     */
+
+    /* Try facet.
+     * no exception, but result esRDD doesn't include facets results but only the original data.
+     */
+    val q =
+      """
+        |{
+        |  "facets" : {
+        |    "event_types" : { "terms" : {"field" : "type"} }
+        |  }
+        |}
+      """.stripMargin
+
+    val rdd = sc.esRDD(esRes, q)
+    rdd.collect().foreach(println)
+
+    println("### Results: %d Records.".format(rdd.count))
     rdd.saveAsTextFile(outFile)
     sc.stop()
   }
