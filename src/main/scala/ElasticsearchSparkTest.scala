@@ -65,7 +65,7 @@ object ElasticsearchSparkTest {
      */
 
     val rdd = sc.esRDD(esRes, q)
-    rdd.collect().foreach(println)
+//    rdd.collect().foreach(println)
 
     println("### Results: %d Records.".format(rdd.count))
     rdd.saveAsTextFile(outFile)
