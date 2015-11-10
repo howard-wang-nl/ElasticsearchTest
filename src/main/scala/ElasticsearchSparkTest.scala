@@ -32,7 +32,22 @@ object ElasticsearchSparkTest {
       sInput.close()
     }
 
-    val q = "?q=type:PushEvent"
+//    val q = "?q=type:PushEvent"
+
+    // Filter date range
+    val q =
+      """
+        |{
+        |  "filter": {
+        |    "range" : {
+        |      "created_at" : {
+        |        "gte": "2015-01-01T00:00:00Z",
+        |        "lte": "2015-01-01T00:30:00Z"
+        |      }
+        |    }
+        |  }
+        |}
+      """.stripMargin
 
     /* This query doesn't work with elasticsearch-spark because the connector is implemented through
      * scan/scroll which doesn't support aggregation yet.
@@ -53,7 +68,7 @@ object ElasticsearchSparkTest {
      */
 
     /* Try facet.
-     * no exception, but result esRDD doesn't include facets results but only the original data.
+     * no exception, esRDD doesn't include facets results but only the original data.
     val q =
       """
         |{
@@ -65,10 +80,24 @@ object ElasticsearchSparkTest {
      */
 
     val rdd = sc.esRDD(esRes, q)
-//    rdd.collect().foreach(println)
+
+    /* Hint: Spark + ElasticSearch returns RDD[(String, Map[String, Any])]. How can I manipulate Any?
+     * http://stackoverflow.com/questions/29829042/spark-elasticsearch-returns-rddstring-mapstring-any-how-can-i-manipul
+     */
+
+    // Verify date range.
+//    rdd.collect().map(_._2.get("created_at").get.asInstanceOf[java.util.Date]).sorted.foreach(println)
 
     println("### Results: %d Records.".format(rdd.count))
+
+    // Remove old output folder.
+    import sys.process._
+    val c = "rm -fr " + outFile
+    c !  // !!! Be careful
+
+    // Save data for inspection and verification.
     rdd.saveAsTextFile(outFile)
+
     sc.stop()
   }
 }
