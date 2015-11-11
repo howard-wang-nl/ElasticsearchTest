@@ -11,6 +11,8 @@ object ElasticsearchSparkTest {
     val indexName = "github"
     val indexType = "eventlog"
     val esRes = indexName + "/" + indexType
+    val timeBegin = "2015-01-01T00:00:00Z"
+    val timeEnd = "2015-01-01T00:30:00Z"
 
     val conf = new SparkConf().setAppName("ElasticsearchSparkTest").setMaster("local")
     conf.set("spark.serializer", classOf[KryoSerializer].getName)
@@ -36,13 +38,13 @@ object ElasticsearchSparkTest {
 
     // Filter date range
     val q2 =
-      """
+      s"""
         |{
         |  "filter": {
         |    "range" : {
         |      "created_at" : {
-        |        "gte": "2015-01-01T00:00:00Z",
-        |        "lte": "2015-01-01T00:30:00Z"
+        |        "gte": "$timeBegin",
+        |        "lte": "$timeEnd"
         |      }
         |    }
         |  }
@@ -79,6 +81,7 @@ object ElasticsearchSparkTest {
       """.stripMargin
 
     val q = q2
+    println(s"### Selected time range: $timeBegin ~ $timeEnd")
     val rdd = sc.esRDD(esRes, q)
     println("### Results: %d Records.".format(rdd.count))
 
