@@ -32,10 +32,10 @@ object ElasticsearchSparkTest {
       sInput.close()
     }
 
-//    val q = "?q=type:PushEvent"
+    val q1 = "?q=type:PushEvent"
 
     // Filter date range
-    val q =
+    val q2 =
       """
         |{
         |  "filter": {
@@ -54,8 +54,8 @@ object ElasticsearchSparkTest {
      * See: How to get aggregations working in Elasticsearch Spark adapter?
      * https://groups.google.com/forum/#!topic/elasticsearch/9ZrJ4zyqgWU
      * https://github.com/elastic/elasticsearch-hadoop/issues/276
-     *
-    val q =
+     */
+    val q3 =
       """
         |{
         |  "aggs" : {
@@ -65,11 +65,11 @@ object ElasticsearchSparkTest {
         |  }
         |}
       """.stripMargin
-     */
 
     /* Try facet.
      * no exception, esRDD doesn't include facets results but only the original data.
-    val q =
+     */
+    val q4 =
       """
         |{
         |  "facets" : {
@@ -77,9 +77,10 @@ object ElasticsearchSparkTest {
         |  }
         |}
       """.stripMargin
-     */
 
+    val q = q2
     val rdd = sc.esRDD(esRes, q)
+    println("### Results: %d Records.".format(rdd.count))
 
     /* Hint: Spark + ElasticSearch returns RDD[(String, Map[String, Any])]. How can I manipulate Any?
      * http://stackoverflow.com/questions/29829042/spark-elasticsearch-returns-rddstring-mapstring-any-how-can-i-manipul
@@ -88,7 +89,15 @@ object ElasticsearchSparkTest {
     // Verify date range.
 //    rdd.collect().map(_._2.get("created_at").get.asInstanceOf[java.util.Date]).sorted.foreach(println)
 
-    println("### Results: %d Records.".format(rdd.count))
+    // Count distinct events of the "type" field.
+    rdd
+      .collect()
+      .map(
+        _._2.get("type")
+          .get.asInstanceOf[String]
+      ).groupBy(s => s)
+      .mapValues(_.length)
+      .foreach(println)
 
     // Remove old output folder.
     import sys.process._
