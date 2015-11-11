@@ -3,9 +3,10 @@ import org.apache.spark.serializer.KryoSerializer
 import org.elasticsearch.spark._
 
 import scala.io.Source
+import scala.collection.mutable.Buffer
 
 object ElasticsearchSparkTest {
-  def main(array: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
     val inputPath = "/Users/hwang/IdeaProjects/githubstat/data/01/"
     val outFile = "/tmp/esRDD"
     val indexName = "github"
@@ -23,15 +24,17 @@ object ElasticsearchSparkTest {
 
     val sc = new SparkContext(conf)
 
-    val files = new java.io.File(inputPath).listFiles
-    val filesSel = files.filter(_.getName.endsWith(".json"))
+    if (args.length > 0 && args(0) == "i") { // import data
+      val files = new java.io.File(inputPath).listFiles
+      val filesSel = files.filter(_.getName.endsWith(".json"))
 
-    for (inputFileName <- filesSel) {
-      println(s"### Importing $inputFileName into Elasticsearch...")
-      val sInput = Source.fromFile(inputFileName)
-      val sLines = sInput.getLines().toSeq
-      sc.makeRDD(sLines).saveJsonToEs(esRes)
-      sInput.close()
+      for (inputFileName <- filesSel) {
+        println(s"### Importing $inputFileName into Elasticsearch...")
+        val sInput = Source.fromFile(inputFileName)
+        val sLines = sInput.getLines().toSeq
+        sc.makeRDD(sLines).saveJsonToEs(esRes)
+        sInput.close()
+      }
     }
 
     val q1 = "?q=type:PushEvent"
@@ -80,7 +83,13 @@ object ElasticsearchSparkTest {
         |}
       """.stripMargin
 
-    val q = q2
+    // return only the selected fields to reduce data transferred betw Elasticsearch and Spark.
+    val q5 =
+      """
+        |{ "fields" : ["type", "created_at"] }
+      """.stripMargin
+
+    val q = q5
     println(s"### Selected time range: $timeBegin ~ $timeEnd")
     val rdd = sc.esRDD(esRes, q)
     println("### Results: %d Records.".format(rdd.count))
@@ -92,15 +101,35 @@ object ElasticsearchSparkTest {
     // Verify date range.
 //    rdd.collect().map(_._2.get("created_at").get.asInstanceOf[java.util.Date]).sorted.foreach(println)
 
-    // Count distinct events of the "type" field.
-    rdd
-      .collect()
-      .map(
-        _._2.get("type")
-          .get.asInstanceOf[String]
-      ).groupBy(s => s)
-      .mapValues(_.length)
-      .foreach(println)
+    /* Count distinct events of the "type" field.
+     * NOTE:
+     *   The default returned data which is a tuple (id:String, Map[String, AnyRef]).
+     *   The value of the Map generalized as AnyRef, which can be converted to concrete types using asInstanceOf[].
+     *   Simple types like String can be converted using asInstanceOf[String], but List of String should be converted using
+     *   asInstanceOf[Buffer[String]].
+     *   If query with fields selection as in q5, the returned field data such as Strings are always put in Buffer[String].
+     */
+    if (q == q5) {
+      // Process result of query with fields selection.
+      rdd
+        .collect()
+        .map(
+          _._2.get("type")
+            .get.asInstanceOf[Buffer[String]]
+        ).groupBy(s => s)
+        .mapValues(_.length)
+        .foreach(println)
+    } else {
+      // Process result of query without fields selection.
+      rdd
+        .collect()
+        .map(
+          _._2.get("type")
+            .get.asInstanceOf[String]
+        ).groupBy(s => s)
+        .mapValues(_.length)
+        .foreach(println)
+    }
 
     // Remove old output folder.
     import sys.process._
