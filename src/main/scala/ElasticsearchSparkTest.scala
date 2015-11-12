@@ -15,7 +15,9 @@ object ElasticsearchSparkTest {
     val timeBegin = "2015-01-01T00:00:00Z"
     val timeEnd = "2015-01-01T00:30:00Z"
 
-    val conf = new SparkConf().setAppName("ElasticsearchSparkTest").setMaster("local")
+    val conf = new SparkConf()
+      .setAppName("ElasticsearchSparkTest")
+      .setMaster("local[*]") // Run Spark locally with as many worker threads as logical cores on your machine.
     conf.set("spark.serializer", classOf[KryoSerializer].getName)
     conf.set("es.index.auto.create", "true")
 //    conf.set("es.nodes", "localhost")
@@ -83,7 +85,7 @@ object ElasticsearchSparkTest {
         |}
       """.stripMargin
 
-    // return only the selected fields to reduce data transferred betw Elasticsearch and Spark.
+    // Get only the selected fields to reduce data transferred betw Elasticsearch and Spark.
     val q5 =
       """
         |{ "fields" : ["type", "created_at"] }
@@ -103,11 +105,12 @@ object ElasticsearchSparkTest {
 
     /* Count distinct events of the "type" field.
      * NOTE:
-     *   The default returned data which is a tuple (id:String, Map[String, AnyRef]).
-     *   The value of the Map generalized as AnyRef, which can be converted to concrete types using asInstanceOf[].
-     *   Simple types like String can be converted using asInstanceOf[String], but List of String should be converted using
-     *   asInstanceOf[Buffer[String]].
-     *   If query with fields selection as in q5, the returned field data such as Strings are always put in Buffer[String].
+     *   1. The default returned data which is a tuple (id:String, Map[String, AnyRef]).
+     *   2. The value of the Map generalized as AnyRef, which can be converted to concrete types using asInstanceOf[].
+     *   3. Simple types like String can be converted using asInstanceOf[String], but List of String should be converted using
+     *      asInstanceOf[Buffer[String]].
+     *   4. If query with fields selection as in q5, the returned field data such as Strings are always put in Buffer[String].
+     *   5. For data type mapping betw Elasticsearch and Scala/Java, see "Type conversion" on https://www.elastic.co/guide/en/elasticsearch/hadoop/current/spark.html
      */
     if (q == q5) {
       // Process result of query with fields selection.
